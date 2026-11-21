@@ -4,6 +4,7 @@ import argparse
 import os
 import re
 
+
 DEFAULT_REPO = "https://pypi.org"
 DEFAULT_OUTPUT = "graph.svg"
 PACKAGE_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
