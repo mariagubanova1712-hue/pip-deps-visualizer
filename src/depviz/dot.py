@@ -10,34 +10,33 @@ class VizError(Exception):
     """Ошибка получения изображения графа."""
 
 
-def quote(name):
-    """Взять имя пакета в кавычки для языка DOT."""
-    return '"' + name.replace('"', '\\"') + '"'
-
-
 def cycle_edges(cycles):
-    """Вернуть множество рёбер (откуда, куда), входящих в циклы."""
-    edges = set()
+    """Вернуть список рёбер (откуда, куда), входящих в циклы.
+
+    Цикл A -> B -> A даёт рёбра (A, B) и (B, A).
+    """
+    edges = []
     for cycle in cycles:
-        edges.update(zip(cycle, cycle[1:]))
+        for i in range(len(cycle) - 1):
+            edges.append((cycle[i], cycle[i + 1]))
     return edges
 
 
 def to_dot(graph, root, cycles=()):
     """Сформировать текст графа зависимостей на языке DOT."""
-    in_cycle = cycle_edges(cycles)
-    lines = [
-        f"digraph {quote(root)} {{",
-        "  rankdir=LR;",
-        "  node [shape=box, style=rounded];",
-        f"  {quote(root)} [style=\"rounded,bold\"];",
-    ]
-    for name, deps in graph.items():
-        for dep in deps:
-            attrs = f" [color={CYCLE_COLOR}]" if (name, dep) in in_cycle else ""
-            lines.append(f"  {quote(name)} -> {quote(dep)}{attrs};")
-    lines.append("}")
-    return "\n".join(lines) + "\n"
+    red_edges = cycle_edges(cycles)
+    text = 'digraph "' + root + '" {\n'
+    text += "  rankdir=LR;\n"
+    text += "  node [shape=box, style=rounded];\n"
+    text += '  "' + root + '" [style="rounded,bold"];\n'
+    for name in graph:
+        for dep in graph[name]:
+            text += '  "' + name + '" -> "' + dep + '"'
+            if (name, dep) in red_edges:
+                text += " [color=" + CYCLE_COLOR + "]"
+            text += ";\n"
+    text += "}\n"
+    return text
 
 
 def save_svg(dot_text, output):
@@ -48,9 +47,7 @@ def save_svg(dot_text, output):
             command, input=dot_text, text=True, check=True,
             capture_output=True,
         )
-    except FileNotFoundError as error:
-        raise VizError(
-            "не найдена программа dot: установите Graphviz"
-        ) from error
+    except FileNotFoundError:
+        raise VizError("не найдена программа dot: установите Graphviz")
     except subprocess.CalledProcessError as error:
-        raise VizError(f"dot завершился с ошибкой: {error.stderr}") from error
+        raise VizError("dot завершился с ошибкой: " + error.stderr)

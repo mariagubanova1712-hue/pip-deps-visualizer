@@ -14,16 +14,28 @@ APP_ERRORS = (ConfigError, RepoError, TestRepoError, VizError)
 
 
 def make_source(config):
-    """Вернуть корневой пакет и функцию получения прямых зависимостей."""
+    """Вернуть корневой пакет и функцию получения прямых зависимостей.
+
+    В тестовом режиме зависимости берутся из файла, иначе из PyPI.
+    """
     if config.test_mode:
         repo = load_test_repo(config.repo)
         if config.package not in repo:
             raise TestRepoError(
-                f"пакет {config.package} не описан в {config.repo}"
+                "пакет " + config.package + " не описан в " + config.repo
             )
-        return config.package, lambda name: repo.get(name, [])
-    root = normalize(config.package)
-    return root, lambda name: get_direct_dependencies(config.repo, name)
+
+        def deps_from_file(name):
+            """Зависимости пакета из тестового файла."""
+            return repo.get(name, [])
+
+        return config.package, deps_from_file
+
+    def deps_from_pypi(name):
+        """Зависимости пакета из репозитория PyPI."""
+        return get_direct_dependencies(config.repo, name)
+
+    return normalize(config.package), deps_from_pypi
 
 
 def print_cycles(cycles):

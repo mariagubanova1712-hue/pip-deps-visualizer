@@ -1,31 +1,17 @@
-"""Тесты разбора метаданных пакетов Python."""
+"""Тесты разбора зависимостей пакетов Python."""
 
 import unittest
 
-from depviz.pypi import (
-    find_metadata_url,
-    normalize,
-    parse_metadata,
-    parse_requirement,
-)
-
-METADATA = """Metadata-Version: 2.1
-Name: demo
-Version: 1.0
-Requires-Dist: numpy>=1.25
-Requires-Dist: python-dateutil>=2.7
-Requires-Dist: pytest; extra == "test"
-
-Описание пакета.
-"""
+from depviz.pypi import normalize, parse_requirement
 
 
 class PypiTest(unittest.TestCase):
-    """Проверка разбора зависимостей."""
+    """Проверка разбора строк зависимостей."""
 
     def test_normalize(self):
-        """Имена приводятся к стандартному виду."""
+        """Имена приводятся к одному виду."""
         self.assertEqual(normalize("Typing_Extensions"), "typing-extensions")
+        self.assertEqual(normalize("zope.interface"), "zope-interface")
 
     def test_parse_requirement(self):
         """Из строки зависимости берётся только имя."""
@@ -35,23 +21,10 @@ class PypiTest(unittest.TestCase):
             "PySocks!=1.5.7; extra == 'socks'": None,
             "colorama; sys_platform == 'win32'": "colorama",
             "zope.interface (>=5)": "zope-interface",
+            "pydantic-extra-types>=2": "pydantic-extra-types",
         }
         for line, expected in cases.items():
             self.assertEqual(parse_requirement(line), expected)
-
-    def test_parse_metadata(self):
-        """Строки Requires-Dist читаются из METADATA."""
-        self.assertEqual(len(parse_metadata(METADATA)), 3)
-
-    def test_find_metadata_url(self):
-        """URL METADATA берётся у wheel-пакета."""
-        files = [
-            {"packagetype": "sdist", "url": "a.tar.gz"},
-            {"packagetype": "bdist_wheel", "url": "a.whl",
-             "core-metadata": {"sha256": "x"}},
-        ]
-        self.assertEqual(find_metadata_url(files), "a.whl.metadata")
-        self.assertIsNone(find_metadata_url(files[:1]))
 
 
 if __name__ == "__main__":

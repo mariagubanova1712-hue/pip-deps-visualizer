@@ -3,14 +3,10 @@
 import argparse
 import os
 import re
-from dataclasses import dataclass
-from urllib.parse import urlparse
 
 DEFAULT_REPO = "https://pypi.org"
 DEFAULT_OUTPUT = "graph.svg"
-OUTPUT_EXTENSION = ".svg"
-URL_SCHEMES = ("http", "https")
-PACKAGE_NAME_RE = re.compile(r"^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$")
+PACKAGE_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 TEST_PACKAGE_RE = re.compile(r"^[A-Z]+$")
 
 
@@ -18,25 +14,16 @@ class ConfigError(Exception):
     """Ошибка в параметрах, заданных пользователем."""
 
 
-@dataclass
 class Config:
     """Настройки приложения, заданные пользователем."""
 
-    package: str
-    repo: str
-    test_mode: bool
-    output: str
-    load_order: bool = False
-
-    def as_pairs(self):
-        """Вернуть параметры списком пар (ключ, значение)."""
-        return [
-            ("package", self.package),
-            ("repo", self.repo),
-            ("test_mode", str(self.test_mode)),
-            ("output", self.output),
-            ("load_order", str(self.load_order)),
-        ]
+    def __init__(self, package, repo, test_mode, output, load_order):
+        """Сохранить все параметры."""
+        self.package = package
+        self.repo = repo
+        self.test_mode = test_mode
+        self.output = output
+        self.load_order = load_order
 
 
 def build_parser():
@@ -70,42 +57,40 @@ def build_parser():
 
 def check_package(name, test_mode):
     """Проверить имя пакета."""
-    if not name.strip():
+    if name == "":
         raise ConfigError("имя пакета не может быть пустым")
-    if test_mode and not TEST_PACKAGE_RE.match(name):
-        raise ConfigError(
-            f"в тестовом режиме пакет называется большими "
-            f"латинскими буквами, получено: {name!r}"
-        )
-    if not test_mode and not PACKAGE_NAME_RE.match(name):
-        raise ConfigError(f"недопустимое имя пакета: {name!r}")
+    if test_mode:
+        if not TEST_PACKAGE_RE.match(name):
+            raise ConfigError(
+                "в тестовом режиме пакет называется большими "
+                "латинскими буквами, получено: " + name
+            )
+    elif not PACKAGE_NAME_RE.match(name):
+        raise ConfigError("недопустимое имя пакета: " + name)
 
 
 def check_repo(repo, test_mode):
     """Проверить URL репозитория или путь к тестовому файлу."""
-    if not repo.strip():
-        raise ConfigError("репозиторий не может быть пустым")
     if test_mode:
         if not os.path.isfile(repo):
-            raise ConfigError(f"файл тестового репозитория не найден: {repo}")
-        return
-    parts = urlparse(repo)
-    if parts.scheme not in URL_SCHEMES or not parts.netloc:
+            raise ConfigError("файл тестового репозитория не найден: " + repo)
+    elif not repo.startswith(("http://", "https://")):
         raise ConfigError(
-            f"URL репозитория должен начинаться с http:// или https://: {repo}"
+            "URL репозитория должен начинаться с http:// или https://: "
+            + repo
         )
 
 
 def check_output(output):
     """Проверить имя файла для изображения графа."""
-    if not output.lower().endswith(OUTPUT_EXTENSION):
+    if not output.endswith(".svg"):
         raise ConfigError(
-            f"файл изображения должен иметь расширение .svg: {output}"
+            "файл изображения должен иметь расширение .svg: " + output
         )
-    folder = os.path.dirname(output) or "."
-    if not os.path.isdir(folder):
+    folder = os.path.dirname(output)
+    if folder != "" and not os.path.isdir(folder):
         raise ConfigError(
-            f"папка для файла изображения не существует: {folder}"
+            "папка для файла изображения не существует: " + folder
         )
 
 

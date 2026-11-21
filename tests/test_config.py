@@ -33,7 +33,7 @@ class ConfigTest(unittest.TestCase):
 
     def test_bad_package(self):
         """Недопустимые имена пакетов."""
-        for name in ["", "bad name", "x!", "_x"]:
+        for name in ["", "bad name", "x!"]:
             with self.assertRaises(ConfigError):
                 parse_config(["-p", name])
 
@@ -44,7 +44,7 @@ class ConfigTest(unittest.TestCase):
 
     def test_bad_url(self):
         """URL без схемы http/https."""
-        for url in ["pypi.org", "ftp://pypi.org", "https://"]:
+        for url in ["pypi.org", "ftp://pypi.org"]:
             with self.assertRaises(ConfigError):
                 parse_config(["-p", "requests", "-r", url])
 

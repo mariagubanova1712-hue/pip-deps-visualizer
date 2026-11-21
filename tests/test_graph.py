@@ -12,7 +12,12 @@ DATA = os.path.join(os.path.dirname(__file__), "data")
 def repo_source(name):
     """Вернуть функцию зависимостей для файла из tests/data."""
     repo = load_test_repo(os.path.join(DATA, name))
-    return lambda package: repo.get(package, [])
+
+    def get_deps(package):
+        """Зависимости пакета из файла."""
+        return repo.get(package, [])
+
+    return get_deps
 
 
 class GraphTest(unittest.TestCase):

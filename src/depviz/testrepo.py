@@ -25,7 +25,7 @@ def check_name(name, line_number):
     if not NAME_RE.match(name):
         raise TestRepoError(
             f"строка {line_number}: пакет должен называться большими "
-            f"латинскими буквами: {name!r}"
+            f"латинскими буквами: {name}"
         )
 
 
@@ -33,7 +33,7 @@ def parse_line(line, line_number):
     """Разобрать строку вида 'A: B C' и вернуть (пакет, [зависимости])."""
     name, colon, rest = line.partition(":")
     if not colon:
-        raise TestRepoError(f"строка {line_number}: нет двоеточия: {line!r}")
+        raise TestRepoError(f"строка {line_number}: нет двоеточия: {line}")
     name = name.strip()
     deps = rest.split()
     for item in [name] + deps:
@@ -60,5 +60,5 @@ def load_test_repo(path):
     try:
         with open(path, encoding="utf-8") as handle:
             return parse_test_repo(handle.read())
-    except OSError as error:
-        raise TestRepoError(f"не удалось прочитать {path}: {error}") from error
+    except OSError:
+        raise TestRepoError(f"не удалось прочитать файл {path}")

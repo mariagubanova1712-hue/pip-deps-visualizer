@@ -44,8 +44,8 @@
 
 | Файл | Функции |
 | --- | --- |
-| `src/depviz/config.py` | `parse_config` — разбор и проверка опций; `check_package`, `check_repo`, `check_output` — проверки отдельных параметров |
-| `src/depviz/pypi.py` | `get_direct_dependencies` — прямые зависимости из PyPI; `fetch` — HTTP-запрос; `find_metadata_url` — ссылка на METADATA wheel-пакета; `parse_metadata` — строки `Requires-Dist`; `parse_requirement` — имя пакета из строки; `normalize` — имя по PEP 503 |
+| `src/depviz/config.py` | `parse_config` — разбор и проверка опций; `check_package`, `check_repo`, `check_output` — проверки отдельных параметров; класс `Config` — хранит настройки |
+| `src/depviz/pypi.py` | `get_direct_dependencies` — прямые зависимости из PyPI; `fetch_json` — скачать JSON; `parse_requirement` — имя пакета из строки зависимости; `normalize` — привести имя к одному виду |
 | `src/depviz/testrepo.py` | `load_test_repo` — чтение файла тестового репозитория; `parse_test_repo`, `parse_line`, `check_name` — разбор и проверка |
 | `src/depviz/graph.py` | `build_graph` — граф рекурсивным DFS с поиском циклов; `load_order` — порядок загрузки |
 | `src/depviz/dot.py` | `to_dot` — текст графа на языке DOT; `save_svg` — изображение SVG через `dot`; `cycle_edges` — рёбра циклов |
@@ -72,9 +72,9 @@ output=graph.svg
 
 ```
 $ ./run.sh -p "bad name"
-Ошибка: недопустимое имя пакета: 'bad name'
+Ошибка: недопустимое имя пакета: bad name
 $ ./run.sh -p a -t -r tests/data/simple.txt
-Ошибка: в тестовом режиме пакет называется большими латинскими буквами, получено: 'a'
+Ошибка: в тестовом режиме пакет называется большими латинскими буквами, получено: a
 $ ./run.sh -p A -t -r nofile.txt
 Ошибка: файл тестового репозитория не найден: nofile.txt
 $ ./run.sh -p requests -r ftp://pypi.org
@@ -90,12 +90,12 @@ $ ./run.sh -p requests -o nodir/graph.svg
 Модуль `src/depviz/pypi.py` получает прямые зависимости без pip и сторонних
 библиотек:
 
-1. Запрашивает `<repo>/pypi/<пакет>/json` (JSON API репозитория PyPI).
-2. Находит wheel-пакет последней версии и скачивает его файл `METADATA`
-   (`<url wheel>.metadata`). Если такого файла нет, берёт поле
-   `info.requires_dist` из JSON.
-3. Читает строки `Requires-Dist`, оставляет имена пакетов (приводит их к
-   виду PEP 503) и пропускает необязательные зависимости (`extra == ...`).
+1. Скачивает `<repo>/pypi/<пакет>/json` — описание пакета в репозитории
+   PyPI в формате JSON.
+2. Берёт поле `info.requires_dist`: это строки `Requires-Dist` из
+   метаданных пакета, например `numpy>=1.25`.
+3. Из каждой строки оставляет только имя пакета и пропускает
+   необязательные зависимости (`extra == ...`).
 
 ```
 $ ./run.sh -p matplotlib
@@ -110,7 +110,7 @@ $ ./run.sh -p matplotlib
   pyparsing
   python-dateutil
 $ ./run.sh -p no-such-package-xyz-123
-Ошибка: не найдено в репозитории: https://pypi.org/pypi/no-such-package-xyz-123/json
+Ошибка: пакет не найден (404): https://pypi.org/pypi/no-such-package-xyz-123/json
 ```
 
 ## Этап 3. Основные операции
@@ -162,7 +162,7 @@ $ ./run.sh -t -r tests/data/diamond.txt -p A
 $ ./run.sh -t -r tests/data/simple.txt -p Z
 Ошибка: пакет Z не описан в tests/data/simple.txt
 $ ./run.sh -t -r tests/data/bad.txt -p A
-Ошибка: строка 1: пакет должен называться большими латинскими буквами: 'c'
+Ошибка: строка 1: пакет должен называться большими латинскими буквами: c
 ```
 
 Реальный пакет:
