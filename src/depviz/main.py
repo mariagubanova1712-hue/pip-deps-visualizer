@@ -78,3 +78,4 @@ def main(argv=None):
         print(f"Ошибка: {error}", file=sys.stderr)
         return EXIT_ERROR
     return EXIT_OK
+
