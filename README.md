@@ -87,3 +87,73 @@ $ ./run.sh -p matplotlib
 $ ./run.sh -p no-such-package-xyz-123
 Ошибка: не найдено в репозитории: https://pypi.org/pypi/no-such-package-xyz-123/json
 ```
+
+## Этап 3. Основные операции
+
+Граф строится в `src/depviz/graph.py` рекурсивным обходом в глубину (DFS).
+Путь от корня хранится в списке: если пакет снова встречается на текущем
+пути, это цикл. Цикл запоминается, а обход по этому ребру не продолжается,
+поэтому программа не зацикливается.
+
+### Тестовый репозиторий
+
+С опцией `-t` вместо URL указывается файл. Формат файла:
+
+```
+# комментарий
+A: B C
+B: D
+D:
+```
+
+Пакеты называются большими латинскими буквами. Пакет без своей строки
+считается пакетом без зависимостей. Примеры лежат в `tests/data/`.
+
+```
+$ ./run.sh -t -r tests/data/simple.txt -p A
+Граф зависимостей A (пакетов: 5):
+  A -> B, C
+  B -> D
+  D -> (нет)
+  C -> D, E
+  E -> (нет)
+$ ./run.sh -t -r tests/data/cycle.txt -p A
+Граф зависимостей A (пакетов: 4):
+  A -> B
+  B -> C, D
+  C -> A
+  D -> D
+Циклические зависимости:
+  A -> B -> C -> A
+  D -> D
+$ ./run.sh -t -r tests/data/diamond.txt -p A
+Граф зависимостей A (пакетов: 6):
+  A -> B, C
+  B -> D
+  D -> E, F
+  E -> (нет)
+  F -> (нет)
+  C -> D
+$ ./run.sh -t -r tests/data/simple.txt -p Z
+Ошибка: пакет Z не описан в tests/data/simple.txt
+$ ./run.sh -t -r tests/data/bad.txt -p A
+Ошибка: строка 1: пакет должен называться большими латинскими буквами: 'c'
+```
+
+Реальный пакет:
+
+```
+$ ./run.sh -p matplotlib
+Граф зависимостей matplotlib (пакетов: 11):
+  matplotlib -> contourpy, cycler, fonttools, kiwisolver, numpy, packaging, pillow, pyparsing, python-dateutil
+  contourpy -> numpy
+  numpy -> (нет)
+  cycler -> (нет)
+  fonttools -> (нет)
+  kiwisolver -> (нет)
+  packaging -> (нет)
+  pillow -> (нет)
+  pyparsing -> (нет)
+  python-dateutil -> tzdata
+  tzdata -> (нет)
+```
