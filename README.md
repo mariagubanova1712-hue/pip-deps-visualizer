@@ -59,3 +59,31 @@ $ ./run.sh -p requests -o graph.png
 $ ./run.sh -p requests -o nodir/graph.svg
 Ошибка: папка для файла изображения не существует: nodir
 ```
+
+## Этап 2. Сбор данных
+
+Модуль `src/depviz/pypi.py` получает прямые зависимости без pip и сторонних
+библиотек:
+
+1. Запрашивает `<repo>/pypi/<пакет>/json` (JSON API репозитория PyPI).
+2. Находит wheel-пакет последней версии и скачивает его файл `METADATA`
+   (`<url wheel>.metadata`). Если такого файла нет, берёт поле
+   `info.requires_dist` из JSON.
+3. Читает строки `Requires-Dist`, оставляет имена пакетов (приводит их к
+   виду PEP 503) и пропускает необязательные зависимости (`extra == ...`).
+
+```
+$ ./run.sh -p matplotlib
+Прямые зависимости matplotlib:
+  contourpy
+  cycler
+  fonttools
+  kiwisolver
+  numpy
+  packaging
+  pillow
+  pyparsing
+  python-dateutil
+$ ./run.sh -p no-such-package-xyz-123
+Ошибка: не найдено в репозитории: https://pypi.org/pypi/no-such-package-xyz-123/json
+```
