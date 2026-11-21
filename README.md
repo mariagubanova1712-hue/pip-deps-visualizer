@@ -51,7 +51,6 @@
 | `src/depviz/dot.py` | `to_dot` — текст графа на языке DOT; `save_svg` — изображение SVG через `dot`; `cycle_edges` — рёбра циклов |
 | `src/depviz/main.py` | `main` — общий сценарий; `make_source` — выбор источника (PyPI или файл); `visualize`, `print_load_order`, `print_cycles` — вывод |
 | `tests/` | unit-тесты (`unittest`), примеры тестовых репозиториев в `tests/data/` |
-| `examples/` | DOT и SVG для requests, matplotlib, flask и тестового графа с циклом |
 
 Примеры вывода в разделах этапов 1–3 показывают поведение программы на
 момент этих этапов: вывод параметров (этап 1) и прямых зависимостей
@@ -256,7 +255,7 @@ $ ./run.sh -t -r tests/data/cycle.txt -p A -l
 (опция `-o`). Корневой пакет обведён жирной рамкой, рёбра циклов — красные.
 
 ```
-$ ./run.sh -t -r tests/data/cycle.txt -p A -o examples/test-cycle.svg
+$ ./run.sh -t -r tests/data/cycle.txt -p A -o cycle.svg
 digraph "A" {
   rankdir=LR;
   node [shape=box, style=rounded];
@@ -269,24 +268,42 @@ digraph "A" {
 }
 Цикл: A -> B -> C -> A
 Цикл: D -> D
-Изображение сохранено: examples/test-cycle.svg
+Изображение сохранено: cycle.svg
 ```
 
 ### Три пакета
 
+Команды создают текст DOT (`.dot`) и изображение (`.svg`) для каждого
+пакета. Готовые изображения в репозиторий не добавляются: это файлы,
+которые создаёт сама программа.
+
 ```sh
-./run.sh -p requests   -o examples/requests.svg   > examples/requests.dot
-./run.sh -p matplotlib -o examples/matplotlib.svg > examples/matplotlib.dot
-./run.sh -p flask      -o examples/flask.svg      > examples/flask.dot
+./run.sh -p requests   -o requests.svg   > requests.dot
+./run.sh -p matplotlib -o matplotlib.svg > matplotlib.dot
+./run.sh -p flask      -o flask.svg      > flask.dot
 ```
 
-| requests | matplotlib | flask |
-| --- | --- | --- |
-| ![requests](examples/requests.svg) | ![matplotlib](examples/matplotlib.svg) | ![flask](examples/flask.svg) |
+Вывод для flask:
 
-Тестовый граф с циклом:
-
-![cycle](examples/test-cycle.svg)
+```
+digraph "flask" {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  "flask" [style="rounded,bold"];
+  "flask" -> "blinker";
+  "flask" -> "click";
+  "flask" -> "importlib-metadata";
+  "flask" -> "itsdangerous";
+  "flask" -> "jinja2";
+  "flask" -> "markupsafe";
+  "flask" -> "werkzeug";
+  "importlib-metadata" -> "zipp";
+  "importlib-metadata" -> "lazy-importer";
+  "jinja2" -> "markupsafe";
+  "werkzeug" -> "markupsafe";
+}
+Изображение сохранено: flask.svg
+```
 
 ### Сравнение со штатным инструментом
 

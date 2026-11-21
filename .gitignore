@@ -7,4 +7,5 @@ venv/
 *.egg-info/
 build/
 dist/
-graph.svg
+*.svg
+*.dot
