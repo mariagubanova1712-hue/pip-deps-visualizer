@@ -1,4 +1,4 @@
-"""Тесты формирования DOT и сохранения SVG."""
+"""Тесты формирования DOT и сохранения SVG"""
 
 import os
 import shutil
@@ -12,10 +12,10 @@ CYCLES = [["A", "B", "A"]]
 
 
 class DotTest(unittest.TestCase):
-    """Проверка текста DOT и файла SVG."""
+    """Проверка текста DOT и файла SVG"""
 
     def test_edges(self):
-        """Каждое ребро графа есть в тексте DOT."""
+        """Каждое ребро графа есть в тексте DOT"""
         text = to_dot(GRAPH, "A")
         self.assertTrue(text.startswith('digraph "A" {'))
         self.assertIn('"A" -> "B";', text)
