@@ -1,0 +1,16 @@
+digraph "flask" {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  "flask" [style="rounded,bold"];
+  "flask" -> "blinker";
+  "flask" -> "click";
+  "flask" -> "importlib-metadata";
+  "flask" -> "itsdangerous";
+  "flask" -> "jinja2";
+  "flask" -> "markupsafe";
+  "flask" -> "werkzeug";
+  "importlib-metadata" -> "zipp";
+  "importlib-metadata" -> "lazy-importer";
+  "jinja2" -> "markupsafe";
+  "werkzeug" -> "markupsafe";
+}

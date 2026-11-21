@@ -32,6 +32,31 @@
 
 Ошибки в параметрах выводятся в виде `Ошибка: ...`, код завершения 1.
 
+## Основной сценарий
+
+```sh
+./run.sh -p flask -o flask.svg      # DOT в консоль, картинка в flask.svg
+./run.sh -p flask -l                # порядок загрузки зависимостей
+./run.sh -t -r tests/data/cycle.txt -p A -o cycle.svg   # тестовый режим
+```
+
+## Структура и функции
+
+| Файл | Функции |
+| --- | --- |
+| `src/depviz/config.py` | `parse_config` — разбор и проверка опций; `check_package`, `check_repo`, `check_output` — проверки отдельных параметров |
+| `src/depviz/pypi.py` | `get_direct_dependencies` — прямые зависимости из PyPI; `fetch` — HTTP-запрос; `find_metadata_url` — ссылка на METADATA wheel-пакета; `parse_metadata` — строки `Requires-Dist`; `parse_requirement` — имя пакета из строки; `normalize` — имя по PEP 503 |
+| `src/depviz/testrepo.py` | `load_test_repo` — чтение файла тестового репозитория; `parse_test_repo`, `parse_line`, `check_name` — разбор и проверка |
+| `src/depviz/graph.py` | `build_graph` — граф рекурсивным DFS с поиском циклов; `load_order` — порядок загрузки |
+| `src/depviz/dot.py` | `to_dot` — текст графа на языке DOT; `save_svg` — изображение SVG через `dot`; `cycle_edges` — рёбра циклов |
+| `src/depviz/main.py` | `main` — общий сценарий; `make_source` — выбор источника (PyPI или файл); `visualize`, `print_load_order`, `print_cycles` — вывод |
+| `tests/` | unit-тесты (`unittest`), примеры тестовых репозиториев в `tests/data/` |
+| `examples/` | DOT и SVG для requests, matplotlib, flask и тестового графа с циклом |
+
+Примеры вывода в разделах этапов 1–3 показывают поведение программы на
+момент этих этапов: вывод параметров (этап 1) и прямых зависимостей
+(этап 2) по условию нужен только на своём этапе.
+
 ## Этап 1. Минимальный прототип с конфигурацией
 
 Приложение выводит все параметры в формате ключ-значение:
@@ -223,3 +248,79 @@ $ ./run.sh -t -r tests/data/cycle.txt -p A -l
    отличаться.
 4. **Уже установленные пакеты.** Без `--target` pip не включает в список
    пакеты, которые уже установлены. depviz всегда строит полный граф.
+
+## Этап 5. Визуализация
+
+`src/depviz/dot.py` формирует текст графа на языке Graphviz (DOT) и
+выводит его в консоль, а программа `dot` сохраняет изображение в SVG
+(опция `-o`). Корневой пакет обведён жирной рамкой, рёбра циклов — красные.
+
+```
+$ ./run.sh -t -r tests/data/cycle.txt -p A -o examples/test-cycle.svg
+digraph "A" {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  "A" [style="rounded,bold"];
+  "A" -> "B" [color=red];
+  "B" -> "C" [color=red];
+  "B" -> "D";
+  "C" -> "A" [color=red];
+  "D" -> "D" [color=red];
+}
+Цикл: A -> B -> C -> A
+Цикл: D -> D
+Изображение сохранено: examples/test-cycle.svg
+```
+
+### Три пакета
+
+```sh
+./run.sh -p requests   -o examples/requests.svg   > examples/requests.dot
+./run.sh -p matplotlib -o examples/matplotlib.svg > examples/matplotlib.dot
+./run.sh -p flask      -o examples/flask.svg      > examples/flask.dot
+```
+
+| requests | matplotlib | flask |
+| --- | --- | --- |
+| ![requests](examples/requests.svg) | ![matplotlib](examples/matplotlib.svg) | ![flask](examples/flask.svg) |
+
+Тестовый граф с циклом:
+
+![cycle](examples/test-cycle.svg)
+
+### Сравнение со штатным инструментом
+
+Своего инструмента визуализации у pip нет, обычно используют `pipdeptree`.
+Пакеты были установлены в чистое окружение (`python3 -m venv`,
+`pip install requests matplotlib flask pipdeptree`), затем запущено
+`pipdeptree -p <пакет>`:
+
+```
+Flask==3.1.3
+├── blinker [required: >=1.9.0, installed: 1.9.0]
+├── click [required: >=8.1.3, installed: 8.5.1]
+├── itsdangerous [required: >=2.2.0, installed: 2.2.0]
+├── Jinja2 [required: >=3.1.2, installed: 3.1.6]
+│   └── MarkupSafe [required: >=2.0, installed: 3.0.4]
+├── MarkupSafe [required: >=2.1.1, installed: 3.0.4]
+└── Werkzeug [required: >=3.1.0, installed: 3.1.9]
+    └── MarkupSafe [required: >=2.1.1, installed: 3.0.4]
+```
+
+Для requests и matplotlib набор пакетов и рёбер совпал с depviz. Для flask
+есть расхождения:
+
+1. **`importlib-metadata`, `zipp`, `lazy-importer` есть только у depviz.**
+   У flask эта зависимость записана с маркером
+   `importlib-metadata>=3.6; python_version < "3.10"`. pipdeptree показывает
+   то, что реально установлено, а на Python 3.13 pip этот пакет не ставил.
+   depviz маркеры окружения (кроме `extra`) не вычисляет и показывает
+   зависимости для всех версий Python и платформ.
+2. **Повторы.** pipdeptree рисует дерево, поэтому `MarkupSafe` выводится
+   три раза. depviz строит граф: каждый пакет — одна вершина, в
+   `markupsafe` входят три стрелки.
+3. **Версии и имена.** pipdeptree показывает требования и установленные
+   версии, depviz — только имена в нормализованном виде (`jinja2` вместо
+   `Jinja2`), версии не учитывает и всегда берёт последнюю версию пакета.
+4. **Источник данных.** pipdeptree читает установленные пакеты, а depviz —
+   метаданные из репозитория PyPI, поэтому ему не нужна установка.
