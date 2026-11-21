@@ -33,6 +33,7 @@ def _visit(node, get_deps, graph, path, cycles):
 
 
 def load_order(graph, root):
+    
     """Вернуть порядок загрузки: зависимости раньше зависящих от них.
 
     Это обратный (post-order) обход DFS. Ребро, замыкающее цикл,
