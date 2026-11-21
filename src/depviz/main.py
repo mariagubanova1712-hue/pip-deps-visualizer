@@ -3,7 +3,7 @@
 import sys
 
 from depviz.config import ConfigError, parse_config
-from depviz.graph import build_graph
+from depviz.graph import build_graph, load_order
 from depviz.pypi import RepoError, get_direct_dependencies, normalize
 from depviz.testrepo import TestRepoError, load_test_repo
 
@@ -36,6 +36,17 @@ def print_graph(root, graph, cycles):
             print("  " + " -> ".join(cycle))
 
 
+def print_load_order(root, graph, cycles):
+    """Вывести порядок загрузки зависимостей пакета."""
+    print(f"Порядок загрузки {root}:")
+    for number, name in enumerate(load_order(graph, root), start=1):
+        print(f"  {number}. {name}")
+    if cycles:
+        print("Внимание: есть циклы, порядок пакетов в цикле условный:")
+        for cycle in cycles:
+            print("  " + " -> ".join(cycle))
+
+
 def main(argv=None):
     """Запустить приложение и вернуть код завершения."""
     try:
@@ -45,5 +56,8 @@ def main(argv=None):
     except APP_ERRORS as error:
         print(f"Ошибка: {error}", file=sys.stderr)
         return EXIT_ERROR
-    print_graph(root, graph, cycles)
+    if config.load_order:
+        print_load_order(root, graph, cycles)
+    else:
+        print_graph(root, graph, cycles)
     return EXIT_OK

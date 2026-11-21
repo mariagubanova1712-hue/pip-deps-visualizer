@@ -28,6 +28,7 @@
 | `-r`, `--repo` | `https://pypi.org` | URL репозитория или путь к файлу тестового репозитория |
 | `-t`, `--test-mode` | выключен | Режим работы с тестовым репозиторием (файлом) |
 | `-o`, `--output` | `graph.svg` | Имя файла с изображением графа (`.svg`) |
+| `-l`, `--load-order` | выключен | Вывести порядок загрузки зависимостей |
 
 Ошибки в параметрах выводятся в виде `Ошибка: ...`, код завершения 1.
 
@@ -157,3 +158,68 @@ $ ./run.sh -p matplotlib
   python-dateutil -> tzdata
   tzdata -> (нет)
 ```
+
+## Этап 4. Дополнительные операции
+
+Опция `-l` выводит порядок загрузки: каждый пакет идёт после всех своих
+зависимостей. Это обратный (post-order) обход DFS по построенному графу
+(`load_order` в `src/depviz/graph.py`). Общая зависимость загружается один
+раз. В цикле строгого порядка не существует, поэтому замыкающее цикл ребро
+пропускается, и программа об этом предупреждает.
+
+```
+$ ./run.sh -t -r tests/data/simple.txt -p A -l
+Порядок загрузки A:
+  1. D
+  2. B
+  3. E
+  4. C
+  5. A
+$ ./run.sh -t -r tests/data/diamond.txt -p A -l
+Порядок загрузки A:
+  1. E
+  2. F
+  3. D
+  4. B
+  5. C
+  6. A
+$ ./run.sh -t -r tests/data/cycle.txt -p A -l
+Порядок загрузки A:
+  1. C
+  2. D
+  3. B
+  4. A
+Внимание: есть циклы, порядок пакетов в цикле условный:
+  A -> B -> C -> A
+  D -> D
+```
+
+### Сравнение с pip
+
+Порядок pip взят из строки `Installing collected packages` команды
+`pip install --target <папка> <пакет>` (Python 3.13, Linux).
+
+| Пакет | depviz (`-l`) | pip |
+| --- | --- | --- |
+| requests | charset-normalizer, idna, urllib3, certifi, requests | urllib3, idna, charset_normalizer, certifi, requests |
+| matplotlib | numpy, contourpy, cycler, fonttools, kiwisolver, packaging, pillow, pyparsing, tzdata, python-dateutil, matplotlib | tzdata, pyparsing, pillow, packaging, numpy, kiwisolver, fonttools, cycler, python-dateutil, contourpy, matplotlib |
+| pytest | colorama, typing-extensions, exceptiongroup, iniconfig, packaging, pluggy, pygments, tomli, pytest | pygments, pluggy, packaging, iniconfig, pytest |
+
+Объяснение расхождений:
+
+1. **Порядок независимых пакетов.** И depviz, и pip ставят зависимости
+   раньше пакета (numpy раньше contourpy, tzdata раньше python-dateutil).
+   Но пакеты, которые друг от друга не зависят, можно загружать в любом
+   порядке. depviz идёт по списку `Requires-Dist`, а pip использует свой
+   порядок разрешения. Оба порядка правильные.
+2. **Маркеры окружения.** У pytest есть зависимости вроде
+   `colorama; sys_platform == "win32"` и `tomli; python_version < "3.11"`.
+   pip проверяет маркеры для текущей системы (Linux, Python 3.13) и такие
+   пакеты не ставит. depviz пропускает только `extra`, а остальные маркеры
+   не вычисляет, поэтому показывает зависимости для всех платформ сразу.
+3. **Версии.** depviz всегда берёт последнюю версию каждого пакета и не
+   учитывает ограничения (`>=`, `<`). pip подбирает версии, совместимые
+   между собой, поэтому в сложных случаях набор зависимостей может
+   отличаться.
+4. **Уже установленные пакеты.** Без `--target` pip не включает в список
+   пакеты, которые уже установлены. depviz всегда строит полный граф.

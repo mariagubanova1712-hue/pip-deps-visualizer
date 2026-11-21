@@ -3,7 +3,7 @@
 import os
 import unittest
 
-from depviz.graph import build_graph
+from depviz.graph import build_graph, load_order
 from depviz.testrepo import TestRepoError, load_test_repo, parse_test_repo
 
 DATA = os.path.join(os.path.dirname(__file__), "data")
@@ -51,6 +51,36 @@ class GraphTest(unittest.TestCase):
         for text in ["A B", "A: B\nA: C"]:
             with self.assertRaises(TestRepoError):
                 parse_test_repo(text)
+
+
+class LoadOrderTest(unittest.TestCase):
+    """Проверка порядка загрузки."""
+
+    def check_order(self, graph, order):
+        """Каждая зависимость загружается раньше пакета."""
+        position = {name: index for index, name in enumerate(order)}
+        for name, deps in graph.items():
+            for dep in deps:
+                self.assertLess(position[dep], position[name])
+
+    def test_simple(self):
+        """Порядок для графа без циклов."""
+        graph, _ = build_graph("A", repo_source("simple.txt"))
+        order = load_order(graph, "A")
+        self.assertEqual(order, ["D", "B", "E", "C", "A"])
+        self.check_order(graph, order)
+
+    def test_diamond(self):
+        """Общая зависимость загружается один раз."""
+        graph, _ = build_graph("A", repo_source("diamond.txt"))
+        order = load_order(graph, "A")
+        self.assertEqual(len(order), len(set(order)))
+        self.check_order(graph, order)
+
+    def test_cycle(self):
+        """С циклом все пакеты всё равно попадают в порядок."""
+        graph, _ = build_graph("A", repo_source("cycle.txt"))
+        self.assertEqual(load_order(graph, "A"), ["C", "D", "B", "A"])
 
 
 if __name__ == "__main__":

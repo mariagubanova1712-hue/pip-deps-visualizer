@@ -26,6 +26,7 @@ class Config:
     repo: str
     test_mode: bool
     output: str
+    load_order: bool = False
 
     def as_pairs(self):
         """Вернуть параметры списком пар (ключ, значение)."""
@@ -34,6 +35,7 @@ class Config:
             ("repo", self.repo),
             ("test_mode", str(self.test_mode)),
             ("output", self.output),
+            ("load_order", str(self.load_order)),
         ]
 
 
@@ -58,6 +60,10 @@ def build_parser():
     parser.add_argument(
         "-o", "--output", default=DEFAULT_OUTPUT,
         help="имя файла с изображением графа (.svg)",
+    )
+    parser.add_argument(
+        "-l", "--load-order", action="store_true",
+        help="вывести порядок загрузки зависимостей",
     )
     return parser
 
@@ -109,4 +115,7 @@ def parse_config(argv=None):
     check_package(args.package, args.test_mode)
     check_repo(args.repo, args.test_mode)
     check_output(args.output)
-    return Config(args.package, args.repo, args.test_mode, args.output)
+    return Config(
+        args.package, args.repo, args.test_mode, args.output,
+        args.load_order,
+    )

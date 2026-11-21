@@ -30,3 +30,24 @@ def _visit(node, get_deps, graph, path, cycles):
     for dep in graph[node]:
         _visit(dep, get_deps, graph, path, cycles)
     path.pop()
+
+
+def load_order(graph, root):
+    """Вернуть порядок загрузки: зависимости раньше зависящих от них.
+
+    Это обратный (post-order) обход DFS. Ребро, замыкающее цикл,
+    пропускается, поэтому у пакетов из цикла порядок условный.
+    """
+    order = []
+    _collect(root, graph, set(), order)
+    return order
+
+
+def _collect(node, graph, seen, order):
+    """Добавить в order зависимости пакета node, а затем сам пакет."""
+    if node in seen:
+        return
+    seen.add(node)
+    for dep in graph.get(node, []):
+        _collect(dep, graph, seen, order)
+    order.append(node)
